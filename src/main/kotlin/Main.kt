@@ -1,13 +1,11 @@
 // Copyright 2000-2021 JetBrains s.r.o. and contributors. Use of this source code is governed by the Apache 2.0 license that can be found in the LICENSE file.
-import androidx.compose.material.MaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material.Button
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -15,10 +13,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.window.MenuBar
+import androidx.compose.ui.window.*
 //import androidx.compose.ui.semantics.Role.Companion.Image
-import androidx.compose.ui.window.Window
-import androidx.compose.ui.window.application
 import kotlinx.coroutines.*
 import kotlinx.coroutines.GlobalScope.coroutineContext
 import kotlinx.coroutines.channels.Channel
@@ -61,7 +57,33 @@ fun main() = application {
 
 
 data class Message(val author: String, val body: String)
+@Preview
+@Composable
+fun Menu() {
 
+    var gliderToggle by remember { mutableStateOf(TableCreator.gliderToggle) }
+    var popup by remember { mutableStateOf(false) }
+    Row {
+
+        Button(onClick = {
+            TableCreator.recreate()
+        }) {
+            Text("Restart")
+        }
+        Checkbox(
+            checked = gliderToggle, onCheckedChange = {
+                TableCreator.gliderToggle = it
+                gliderToggle = it
+            }
+        )
+        Button(onClick = {
+            TableCreator.addGlider()
+        }) {
+            Text("add glider")
+        }
+
+    }
+}
 @Composable
 fun MessageCard(msg: Message) {
 
@@ -72,14 +94,10 @@ fun MessageCard(msg: Message) {
 //            painter = painterResource(R.drawable.profile_picture),
 //            contentDescription = "Contact profile picture",
 //        )
-        var recSize = 2f
+        var recSize = 10f
 
+        Menu()
 
-        Button(onClick = {
-            TableCreator.recreate()
-        }) {
-            Text("Restart")
-        }
 
 //        Column {
 //            Text(text = msg.author)
@@ -89,11 +107,11 @@ fun MessageCard(msg: Message) {
         EachFrameUpdatingCanvas(Modifier.fillMaxSize()) { frameTime, table ->
             canvasWidth = this.size.width
             canvasHeight = this.size.height
-            drawLine(
-                start = Offset(x = canvasWidth, y = 0f),
-                end = Offset(x = 0f, y = canvasHeight),
-                color = Color.Blue
-            )
+//            drawLine(
+//                start = Offset(x = canvasWidth, y = 0f),
+//                end = Offset(x = 0f, y = canvasHeight),
+//                color = Color.Blue
+//            )
             table.forEachIndexed { i, row ->
                 row.forEachIndexed { j, cell ->
                     if( cell )
@@ -137,6 +155,7 @@ fun PreviewMessageCard() {
 typealias Table = List<List<Boolean>>
 
 object TableCreator {
+    var gliderCreationSpeed = 7
     private val tableContext = newSingleThreadContext("tableContext")
     val tableChannel = Channel<Table>(Channel.RENDEZVOUS)
 //    val tableReady = Channel<Unit>(Channel.RENDEZVOUS)
@@ -145,6 +164,22 @@ object TableCreator {
     var h by Delegates.notNull<Int>()
     var w by Delegates.notNull<Int>()
     private lateinit var table: Table
+    var gliderToggle = false
+    private var gliderToggleCount = gliderCreationSpeed
+    fun addGlider() {
+        (table as MutableList<MutableList<Boolean>>).also { table ->
+            table[0][0] = false
+            table[0][1] = false
+            table[0][2] = true
+            table[1][0] = true
+            table[1][1] = false
+            table[1][2] = true
+            table[2][0] = true
+            table[2][0] = false
+            table[2][1] = true
+            table[2][2] = true
+        }
+    }
     fun start(h: Int, w: Int) {
         this.h = h
         this.w = w
@@ -176,6 +211,13 @@ object TableCreator {
                     }
                 }
                 tableChannel.send(table)
+                if(gliderToggle) {
+                    gliderToggleCount--
+                    if(gliderToggleCount <= 0) {
+                        gliderToggleCount = gliderCreationSpeed
+                        addGlider()
+                    }
+                }
             }
         }
     }
